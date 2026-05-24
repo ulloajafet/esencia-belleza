@@ -401,3 +401,174 @@ document.addEventListener('DOMContentLoaded', () => {
     initReveal();
   }, 500);
 });
+
+// ═══════════════════════════════════════════════════════════
+// PANEL ADMIN OCULTO
+// ─ Se activa dando 5 clics en el copyright del footer
+// ═══════════════════════════════════════════════════════════
+
+const ADMIN_PASSWORD = 'esencia2024'; // ← CAMBIA ESTA CONTRASEÑA
+let adminClicks = 0;
+let adminClickTimer;
+let todasLasCitas = [];
+
+function adminClick() {
+  adminClicks++;
+  clearTimeout(adminClickTimer);
+  adminClickTimer = setTimeout(() => { adminClicks = 0; }, 2000);
+
+  if (adminClicks >= 5) {
+    adminClicks = 0;
+    abrirAdminLogin();
+  }
+}
+
+function abrirAdminLogin() {
+  document.getElementById('adminOverlay').classList.add('active');
+  document.getElementById('modalAdminLogin').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('adminPass').focus(), 300);
+}
+
+function cerrarAdmin() {
+  document.getElementById('adminOverlay').classList.remove('active');
+  document.getElementById('modalAdminLogin').classList.remove('active');
+  document.getElementById('modalAdminPanel').classList.remove('active');
+  document.body.style.overflow = '';
+  document.getElementById('adminPass').value = '';
+  document.getElementById('adminError').style.display = 'none';
+}
+
+function verificarAdmin() {
+  const pass = document.getElementById('adminPass').value;
+  if (pass === ADMIN_PASSWORD) {
+    document.getElementById('modalAdminLogin').classList.remove('active');
+    document.getElementById('modalAdminPanel').classList.add('active');
+    cargarCitas();
+  } else {
+    document.getElementById('adminError').style.display = 'block';
+    document.getElementById('adminPass').value = '';
+    document.getElementById('adminPass').focus();
+  }
+}
+
+async function cargarCitas() {
+  document.getElementById('adminCitas').innerHTML = '<div class="admin-loading">Cargando citas... 🌸</div>';
+  try {
+    const res = await fetch(`${API_URL}/api/citas`, {
+      headers: { 'x-admin-key': 'EsenciaBelleza2024' }
+    });
+    const { data } = await res.json();
+    todasLasCitas = data || [];
+    filtrarCitas();
+    renderStats();
+  } catch {
+    document.getElementById('adminCitas').innerHTML =
+      '<div class="admin-empty">⚠️ No se pudo conectar con el servidor.<br>Verifica que el backend esté activo.</div>';
+  }
+}
+
+function renderStats() {
+  const total      = todasLasCitas.length;
+  const pendientes = todasLasCitas.filter(c => c.estado === 'pendiente').length;
+  const confirmadas= todasLasCitas.filter(c => c.estado === 'confirmada').length;
+  const hoy = new Date().toISOString().split('T')[0];
+  const citasHoy   = todasLasCitas.filter(c => c.fecha_preferida?.startsWith(hoy)).length;
+
+  document.getElementById('adminStats').innerHTML = `
+    <div class="stat-chip">📋 Total: <strong>${total}</strong></div>
+    <div class="stat-chip">⏳ Pendientes: <strong>${pendientes}</strong></div>
+    <div class="stat-chip">✅ Confirmadas: <strong>${confirmadas}</strong></div>
+    <div class="stat-chip">📅 Hoy: <strong>${citasHoy}</strong></div>
+  `;
+}
+
+function filtrarCitas() {
+  const filtro = document.getElementById('adminFiltro').value;
+  const citas = filtro === 'todas'
+    ? todasLasCitas
+    : todasLasCitas.filter(c => c.estado === filtro);
+  renderCitas(citas);
+}
+
+function renderCitas(citas) {
+  const container = document.getElementById('adminCitas');
+  if (!citas || citas.length === 0) {
+    container.innerHTML = '<div class="admin-empty">🌸 No hay citas en esta categoría</div>';
+    return;
+  }
+
+  container.innerHTML = citas.map(c => {
+    const servicios = Array.isArray(c.servicios)
+      ? c.servicios
+      : (typeof c.servicios === 'string' ? JSON.parse(c.servicios) : []);
+
+    const fecha = c.fecha_preferida
+      ? new Date(c.fecha_preferida + 'T12:00:00').toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' })
+      : 'Sin fecha';
+
+    const creado = new Date(c.created_at).toLocaleDateString('es-MX', {
+      day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'
+    });
+
+    const total = servicios.reduce((s, sv) => s + (sv.precio || 0), 0);
+    const wsp = c.telefono.replace(/\D/g,'');
+    const wspNum = wsp.startsWith('52') ? wsp : `52${wsp}`;
+
+    const msgRecordatorio = encodeURIComponent(
+      `🌸 Hola ${c.nombre}! Te recordamos tu cita mañana en *Esencia Belleza* ✿\n\n` +
+      `📋 Servicios: ${servicios.map(s => s.nombre).join(', ')}\n` +
+      `📅 Fecha: ${fecha}\n\n` +
+      `¡Te esperamos! Cualquier cambio avísanos 💕`
+    );
+
+    return `
+    <div class="cita-card" id="cita-${c.id}">
+      <div class="cita-card-header">
+        <div>
+          <div class="cita-nombre">${c.nombre}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">Agendó: ${creado}</div>
+        </div>
+        <div class="cita-fecha-badge">📅 ${fecha}</div>
+      </div>
+      <div class="cita-card-body">
+        <div class="cita-tel">
+          📱 <a href="https://wa.me/${wspNum}" target="_blank">${c.telefono}</a>
+        </div>
+        <div class="cita-servicios">
+          ${servicios.map(s => `<span>✿ ${s.nombre}</span>`).join('')}
+        </div>
+        <div class="cita-tipo">
+          ${c.tipo_agenda === 'junto' ? '📅 Todo el mismo día' : '🗓️ Días separados'}
+          ${total > 0 ? ` · Total estimado: <strong>$${total} MXN</strong>` : ''}
+        </div>
+        ${c.notas ? `<div class="cita-notas">📝 "${c.notas}"</div>` : ''}
+      </div>
+      <div class="cita-card-footer">
+        <span class="estado-badge estado-${c.estado}">${c.estado}</span>
+        ${c.estado !== 'confirmada' ? `<button class="btn-confirmar" onclick="cambiarEstado(${c.id},'confirmada')">✓ Confirmar</button>` : ''}
+        ${c.estado !== 'cancelada'  ? `<button class="btn-cancelar"  onclick="cambiarEstado(${c.id},'cancelada')">✕ Cancelar</button>`  : ''}
+        <a class="btn-wsp-cliente" href="https://wa.me/${wspNum}?text=${msgRecordatorio}" target="_blank">
+          💬 Recordatorio WSP
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cambiarEstado(id, estado) {
+  try {
+    await fetch(`${API_URL}/api/citas/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': 'EsenciaBelleza2024'
+      },
+      body: JSON.stringify({ estado })
+    });
+    await cargarCitas();
+    mostrarToast(estado === 'confirmada' ? '✅ Cita confirmada' : '✕ Cita cancelada');
+  } catch {
+    mostrarToast('Error al actualizar');
+  }
+}

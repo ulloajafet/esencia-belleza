@@ -14,10 +14,11 @@ const pool = new Pool({
 
 // ─── Middleware ───────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type']
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-admin-key']
 }));
+app.options('*', cors());
 app.use(express.json());
 
 // ─── Init DB ─────────────────────────────────────────────────

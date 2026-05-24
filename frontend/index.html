@@ -347,9 +347,52 @@
       <span>·</span>
       <a href="#ubicacion">Ubicación</a>
     </div>
-    <p class="footer-copy">© 2025 Esencia Belleza Salon · Todos los derechos reservados</p>
+    <p class="footer-copy" id="footerCopy" onclick="adminClick()" style="cursor:default">© 2025 Esencia Belleza Salon · Todos los derechos reservados</p>
   </div>
 </footer>
+
+<!-- PANEL ADMIN OCULTO -->
+<div class="modal-overlay" id="adminOverlay" onclick="cerrarAdmin()"></div>
+
+<div class="modal-admin" id="modalAdminLogin">
+  <div class="admin-login-box">
+    <div class="admin-logo">🌸</div>
+    <h2>Panel Privado</h2>
+    <p>Solo para el equipo de Esencia Belleza</p>
+    <div class="form-group" style="margin-top:1.5rem">
+      <label>Contraseña</label>
+      <input type="password" id="adminPass" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter') verificarAdmin()" />
+    </div>
+    <button class="btn-cta full" onclick="verificarAdmin()">Entrar →</button>
+    <p id="adminError" style="color:#e53e3e;font-size:0.82rem;margin-top:0.75rem;display:none;text-align:center">
+      Contraseña incorrecta ✕
+    </p>
+    <button class="btn-admin-cancel" onclick="cerrarAdmin()">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal-admin panel" id="modalAdminPanel">
+  <div class="admin-panel-inner">
+    <div class="admin-panel-header">
+      <h2>🌸 Agenda de Citas</h2>
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+        <select id="adminFiltro" onchange="filtrarCitas()" class="admin-select">
+          <option value="todas">Todas</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="confirmada">Confirmadas</option>
+          <option value="cancelada">Canceladas</option>
+        </select>
+        <button class="btn-admin-refresh" onclick="cargarCitas()">↻ Actualizar</button>
+        <button class="btn-admin-close" onclick="cerrarAdmin()">✕ Cerrar</button>
+      </div>
+    </div>
+    <div class="admin-stats" id="adminStats"></div>
+    <div class="admin-citas" id="adminCitas">
+      <div class="admin-loading">Cargando citas...</div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════
      MODAL CARRITO

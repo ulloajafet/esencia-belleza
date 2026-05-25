@@ -224,35 +224,92 @@ function quitarItem(id) {
 function irPaso2() {
   document.getElementById('paso1').style.display='none';
   document.getElementById('paso2').style.display='block';
-  const m = new Date(); m.setDate(m.getDate()+1);
-  document.getElementById('inputFecha').min = m.toISOString().split('T')[0];
+  const manana = new Date(); manana.setDate(manana.getDate()+1);
+  const minDate = manana.toISOString().split('T')[0];
+  document.getElementById('inputFecha').min = minDate;
+  renderFechasSeparadas(minDate);
+}
+
+function renderFechasSeparadas(minDate) {
+  const container = document.getElementById('fechasSeparadas');
+  if (!container) return;
+  if (tipoAgenda === 'separado' && carrito.length > 1) {
+    container.style.display = 'block';
+    container.innerHTML = `
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;text-align:center">
+        Elige la fecha preferida para cada servicio:
+      </p>
+      ${carrito.map((s,i) => `
+        <div class="field">
+          <label>${s.nombre}</label>
+          <input type="date" id="fechaSep-${i}" min="${minDate}"/>
+        </div>
+      `).join('')}
+    `;
+    document.getElementById('fechaUnica').style.display = 'none';
+  } else {
+    container.style.display = 'none';
+    document.getElementById('fechaUnica').style.display = 'block';
+  }
 }
 
 async function enviarWsp() {
   const nombre   = document.getElementById('inputNombre').value.trim();
   const telefono = document.getElementById('inputTelefono').value.trim();
-  const fecha    = document.getElementById('inputFecha').value;
   const notas    = document.getElementById('inputNotas').value.trim();
   if (!nombre)   { toast('Ingresa tu nombre 🌸'); return; }
   if (!telefono) { toast('Ingresa tu WhatsApp 📱'); return; }
+
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fmtFecha = f => { if(!f) return 'Flexible'; const[y,m,d]=f.split('-'); return `${d} de ${meses[m-1]} ${y}`; };
+
+  // Recoger fechas según tipo
+  let fechaPrincipal = '';
+  let serviciosConFecha = [];
+
+  if (tipoAgenda === 'separado' && carrito.length > 1) {
+    serviciosConFecha = carrito.map((s,i) => ({
+      ...s,
+      fecha: document.getElementById(`fechaSep-${i}`)?.value || ''
+    }));
+  } else {
+    fechaPrincipal = document.getElementById('inputFecha').value;
+    serviciosConFecha = carrito.map(s => ({...s, fecha: fechaPrincipal}));
+  }
+
   try {
     await fetch(`${API_URL}/api/citas`,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({nombre,telefono,servicios:carrito.map(s=>({id:s.id,nombre:s.nombre,precio:s.precio_min})),
-      fecha_preferida:fecha||null,notas,tipo_agenda:tipoAgenda})});
+      body:JSON.stringify({nombre,telefono,
+        servicios:serviciosConFecha.map(s=>({id:s.id,nombre:s.nombre,precio:s.precio_min,fecha:s.fecha})),
+        fecha_preferida:fechaPrincipal||serviciosConFecha[0]?.fecha||null,
+        notas,tipo_agenda:tipoAgenda})});
   } catch {}
-  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const fechaTexto = fecha ? (()=>{ const [y,m,d]=fecha.split('-'); return `${d} de ${meses[m-1]} ${y}`; })() : 'Flexible';
+
+  // Armar mensaje WhatsApp
+  let svcsLineas;
+  if (tipoAgenda === 'separado' && carrito.length > 1) {
+    svcsLineas = serviciosConFecha.map(s =>
+      `   ✿ ${s.nombre} — $${s.precio_min} MXN\n      📅 Fecha: ${fmtFecha(s.fecha)}`
+    );
+  } else {
+    svcsLineas = carrito.map(s => `   ✿ ${s.nombre} — $${s.precio_min} MXN`);
+  }
+
   const msg = [
     `🌸 *¡Hola! Quiero agendar en Esencia Belleza* 🌸`,``,
     `👤 *Nombre:* ${nombre}`,`📱 *WhatsApp:* ${telefono}`,``,
     `💆 *Servicios:*`,
-    ...carrito.map(s=>`   ✿ ${s.nombre} — $${s.precio_min} MXN`),``,
+    ...svcsLineas,``,
     `💰 *Total estimado:* desde $${carrito.reduce((s,c)=>s+c.precio_min,0)} MXN`,``,
-    tipoAgenda==='junto'?`📅 *Todo el mismo día*`:`🗓️ *En días separados*`,
-    `📅 Fecha preferida: ${fechaTexto}`,
+    tipoAgenda==='junto'
+      ? `📅 *Todo el mismo día* — ${fmtFecha(fechaPrincipal)}`
+      : carrito.length===1
+        ? `📅 Fecha: ${fmtFecha(serviciosConFecha[0]?.fecha)}`
+        : `🗓️ *En días separados* (fechas arriba)`,
     notas?`📝 Notas: ${notas}`:'',``,
     `_Enviado desde esenciabelleza.onrender.com_ ✿`
   ].filter(l=>l!==undefined).join('\n');
+
   window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`,'_blank');
   cerrarCarrito(); carrito=[]; actualizarBadge(); renderServicios();
   toast('¡Mensaje listo! Te confirmamos en breve 🌸');

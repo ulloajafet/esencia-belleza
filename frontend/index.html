@@ -354,7 +354,7 @@
       <h4 class="paso-title">¿Cómo los agendas?</h4>
       <div class="agenda-grid">
         <label class="agenda-opt">
-          <input type="radio" name="tipo" value="junto" checked onchange="tipoAgenda='junto'"/>
+          <input type="radio" name="tipo" value="junto" checked onchange="tipoAgenda='junto';renderFechasSeparadas(document.getElementById('inputFecha').min)"/>
           <div class="agenda-card">
             <span>📅</span>
             <strong>Mismo día</strong>
@@ -362,7 +362,7 @@
           </div>
         </label>
         <label class="agenda-opt">
-          <input type="radio" name="tipo" value="separado" onchange="tipoAgenda='separado'"/>
+          <input type="radio" name="tipo" value="separado" onchange="tipoAgenda='separado';renderFechasSeparadas(document.getElementById('inputFecha').min)"/>
           <div class="agenda-card">
             <span>🗓️</span>
             <strong>Días separados</strong>
@@ -372,7 +372,8 @@
       </div>
       <div class="field"><label>Tu nombre *</label><input type="text" id="inputNombre" placeholder="¿Cómo te llamas?"/></div>
       <div class="field"><label>Tu WhatsApp *</label><input type="tel" id="inputTelefono" placeholder="+52 664 123 4567"/></div>
-      <div class="field"><label>Fecha preferida</label><input type="date" id="inputFecha"/></div>
+      <div id="fechaUnica" class="field"><label>Fecha preferida</label><input type="date" id="inputFecha"/></div>
+      <div id="fechasSeparadas" style="display:none"></div>
       <div class="field"><label>Notas</label><textarea id="inputNotas" rows="2" placeholder="Alergias, preferencias..."></textarea></div>
       <button class="btn-wsp full" onclick="enviarWsp()">💬 Enviar por WhatsApp</button>
       <p class="disclaimer">Solo da clic en Enviar en WhatsApp y te confirmamos en minutos 🌸</p>
